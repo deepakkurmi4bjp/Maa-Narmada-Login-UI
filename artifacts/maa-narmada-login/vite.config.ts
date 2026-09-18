@@ -6,7 +6,8 @@ import { defineConfig } from 'vite';
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
 export default defineConfig({
-  base:'/'
+  base:'/',
+  //
   plugins: [
     react(),
     tailwindcss(),
