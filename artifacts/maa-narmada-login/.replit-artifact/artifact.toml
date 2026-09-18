@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Maa Narmada Login"
+description = "A devotional Hindi admin login screen recreated from the provided Maa Narmada artwork, with a responsive layout and functional login interactions."
+version = "1.0.0"
+id = "artifacts/maa-narmada-login"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24489
+
+[services.development]
+run = "pnpm --filter @workspace/maa-narmada-login run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/maa-narmada-login", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/maa-narmada-login/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24489"
+BASE_PATH = "/"
