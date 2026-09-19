@@ -1,6 +1,17 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Apple, ArrowRight, Check, Chrome, Eye, EyeOff, Facebook, KeyRound, ShieldCheck, UserRound } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  FileText,
+  Mars,
+  Plus,
+  Send,
+  ShieldCheck,
+  Trash2,
+  UsersRound,
+  Venus,
+} from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -9,171 +20,494 @@ import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 
-type SocialProvider = 'Google' | 'Apple' | 'Facebook';
+type RegistrationForm = {
+  name: string;
+  fatherName: string;
+  motherName: string;
+  age: string;
+  gender: 'Male' | 'Female' | '';
+  mobile: string;
+  whatsapp: string;
+  village: string;
+  block: string;
+  district: string;
+  allergy: string;
+};
 
-function Home() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [status, setStatus] = useState('');
-  const [signedIn, setSignedIn] = useState(false);
+type Companion = {
+  name: string;
+  age: string;
+  gender: string;
+  relation: string;
+};
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+const initialRegistration: RegistrationForm = {
+  name: '',
+  fatherName: '',
+  motherName: '',
+  age: '',
+  gender: '',
+  mobile: '',
+  whatsapp: '',
+  village: '',
+  block: '',
+  district: '',
+  allergy: '',
+};
+
+const initialCompanion: Companion = {
+  name: '',
+  age: '',
+  gender: '',
+  relation: '',
+};
+
+function Field({
+  label,
+  hindiLabel,
+  value,
+  onChange,
+  placeholder,
+  testId,
+  type = 'text',
+  required = false,
+  invalid = false,
+}: {
+  label: string;
+  hindiLabel?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  testId: string;
+  type?: string;
+  required?: boolean;
+  invalid?: boolean;
+}) {
+  return (
+    <label className="field">
+      <span>
+        {label}{hindiLabel ? ` (${hindiLabel})` : ''}{required && <b className="required"> *</b>}
+      </span>
+      <input
+        className="field-input"
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        required={required}
+        aria-invalid={invalid}
+        data-testid={testId}
+      />
+    </label>
+  );
+}
+
+function RegistrationPage() {
+  const [registration, setRegistration] = useState<RegistrationForm>(initialRegistration);
+  const [sameWhatsApp, setSameWhatsApp] = useState(false);
+  const [hasCompanions, setHasCompanions] = useState(true);
+  const [companions, setCompanions] = useState<Companion[]>([initialCompanion]);
+  const [registrationError, setRegistrationError] = useState('');
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [adminSignedIn, setAdminSignedIn] = useState(false);
+
+  function updateRegistration(key: keyof RegistrationForm, value: string) {
+    setRegistration((current) => ({ ...current, [key]: value }));
+    setRegistrationError('');
+    setRegistrationComplete(false);
+  }
+
+  function updateMobile(value: string) {
+    setRegistration((current) => ({
+      ...current,
+      mobile: value,
+      whatsapp: sameWhatsApp ? value : current.whatsapp,
+    }));
+    setRegistrationError('');
+    setRegistrationComplete(false);
+  }
+
+  function toggleSameWhatsApp(checked: boolean) {
+    setSameWhatsApp(checked);
+    if (checked) {
+      setRegistration((current) => ({ ...current, whatsapp: current.mobile }));
+    }
+  }
+
+  function updateCompanion(index: number, key: keyof Companion, value: string) {
+    setCompanions((current) =>
+      current.map((companion, companionIndex) =>
+        companionIndex === index ? { ...companion, [key]: value } : companion,
+      ),
+    );
+  }
+
+  function submitRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setSignedIn(false);
-      setStatus('कृपया उपयोगकर्ता नाम और पासवर्ड भरें।');
+    const requiredValues = [
+      registration.name,
+      registration.fatherName,
+      registration.motherName,
+      registration.age,
+      registration.gender,
+      registration.mobile,
+      registration.whatsapp,
+      registration.village,
+      registration.block,
+      registration.district,
+    ];
+    if (requiredValues.some((value) => !value.trim())) {
+      setRegistrationComplete(false);
+      setRegistrationError('कृपया सभी आवश्यक विवरण भरें और लिंग का चयन करें।');
       return;
     }
-
-    setSignedIn(true);
-    setStatus('लॉगिन सफल रहा — सेवा में आपका स्वागत है।');
+    setRegistrationError('');
+    setRegistrationComplete(true);
   }
 
-  function handleForgotPassword() {
-    setSignedIn(false);
-    setStatus('पासवर्ड रीसेट करने के लिए निर्देश आपके ईमेल पर भेजे जाएंगे।');
-  }
-
-  function handleSocial(provider: SocialProvider) {
-    setSignedIn(false);
-    setStatus(`${provider} से जारी रखने के लिए चयनित किया गया।`);
-  }
-
-  function handleSignup() {
-    setSignedIn(false);
-    setStatus('साइन अप सुविधा शीघ्र उपलब्ध होगी।');
+  function submitAdmin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!adminEmail.trim() || !adminPassword.trim()) {
+      setAdminSignedIn(false);
+      setAdminError('कृपया ईमेल और पासवर्ड भरें।');
+      return;
+    }
+    if (adminEmail.trim().toLowerCase() !== 'deepak53802@gmail.com' || adminPassword !== 'Aditya@123') {
+      setAdminSignedIn(false);
+      setAdminError('ईमेल या पासवर्ड सही नहीं है। कृपया दोबारा प्रयास करें।');
+      return;
+    }
+    setAdminError('');
+    setAdminSignedIn(true);
   }
 
   return (
     <main className="login-page" data-testid="page-login">
-      <section className="reference-stage" aria-label="श्री माँ नर्मदा भक्त परिवार एडमिन पैनल">
-        {status && (
-          <div className="sr-status" role="status" aria-live="polite" data-testid="status-feedback">
-            {status}
+      <div className="public-shell">
+        <header className="hero-art" aria-label="श्री माँ नर्मदा भक्त परिवार">
+          <div className="hero-caption">
+            <span>॥ नर्मदे हर ॥</span>
+            <span>श्री माँ नर्मदा भक्त परिवार</span>
           </div>
-        )}
+        </header>
 
-        <section className="login-card" data-testid="card-login">
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="card-heading">
-              <span className="card-heading-icon" aria-hidden="true">
-                <ShieldCheck />
-              </span>
-              <div>
-                <h1>एडमिन पैनल लॉगिन</h1>
-                <p>सेवा में समर्पित, पारदर्शिता के लिए प्रतिबद्ध</p>
+        <section className="form-card" aria-labelledby="registration-heading" data-testid="card-registration">
+          <div className="form-heading">
+            <span className="heading-mark" aria-hidden="true"><FileText /></span>
+            <div>
+              <h1 id="registration-heading">यात्रा पंजीयन फॉर्म</h1>
+              <p>श्री माँ नर्मदा जन्मोत्सव चुनरी यात्रा में सहभागी बनने हेतु अपना विवरण भरें</p>
+            </div>
+          </div>
+
+          <form className="registration-form" noValidate onSubmit={submitRegistration}>
+            <div className="form-grid">
+              <Field
+                label="Name"
+                value={registration.name}
+                onChange={(value) => updateRegistration('name', value)}
+                placeholder="अपना पूरा नाम लिखें"
+                testId="input-name"
+                required
+                invalid={!!registrationError && !registration.name}
+              />
+              <Field
+                label="Father's Name"
+                value={registration.fatherName}
+                onChange={(value) => updateRegistration('fatherName', value)}
+                placeholder="पिता का नाम लिखें"
+                testId="input-father-name"
+                required
+                invalid={!!registrationError && !registration.fatherName}
+              />
+              <Field
+                label="Mother's Name"
+                value={registration.motherName}
+                onChange={(value) => updateRegistration('motherName', value)}
+                placeholder="माता का नाम लिखें"
+                testId="input-mother-name"
+                required
+                invalid={!!registrationError && !registration.motherName}
+              />
+              <Field
+                label="Age"
+                hindiLabel="आयु (वर्ष में)"
+                value={registration.age}
+                onChange={(value) => updateRegistration('age', value)}
+                placeholder="आयु (वर्ष में)"
+                testId="input-age"
+                type="number"
+                required
+                invalid={!!registrationError && !registration.age}
+              />
+            </div>
+
+            <div className="field full-span">
+              <span>Gender (लिंग)<b className="required"> *</b></span>
+              <div className="gender-box" role="radiogroup" aria-label="Gender">
+                <label className={`gender-choice${registration.gender === 'Male' ? ' selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="Male"
+                    checked={registration.gender === 'Male'}
+                    onChange={() => updateRegistration('gender', 'Male')}
+                    data-testid="radio-gender-male"
+                  />
+                  <Mars aria-hidden="true" /> <span>Male</span>
+                </label>
+                <label className={`gender-choice${registration.gender === 'Female' ? ' selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="Female"
+                    checked={registration.gender === 'Female'}
+                    onChange={() => updateRegistration('gender', 'Female')}
+                    data-testid="radio-gender-female"
+                  />
+                  <Venus aria-hidden="true" /> <span>Female</span>
+                </label>
               </div>
             </div>
 
-            <div className="field-stack">
-              <label className="field-wrap">
-                <UserRound aria-hidden="true" />
+            <div className="contact-grid">
+              <Field
+                label="Mobile Number"
+                value={registration.mobile}
+                onChange={updateMobile}
+                placeholder="मोबाइल नंबर लिखें"
+                testId="input-mobile"
+                type="tel"
+                required
+                invalid={!!registrationError && !registration.mobile}
+              />
+              <label className="same-number">
                 <input
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="उपयोगकर्ता नाम / ईमेल"
-                  autoComplete="username"
-                  aria-label="उपयोगकर्ता नाम / ईमेल"
-                  data-testid="input-username"
+                  type="checkbox"
+                  checked={sameWhatsApp}
+                  onChange={(event) => toggleSameWhatsApp(event.target.checked)}
+                  data-testid="checkbox-whatsapp-same"
                 />
-              </label>
-
-              <label className="field-wrap">
-                <KeyRound aria-hidden="true" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="पासवर्ड"
-                  autoComplete="current-password"
-                  aria-label="पासवर्ड"
-                  data-testid="input-password"
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? 'पासवर्ड छुपाएं' : 'पासवर्ड दिखाएं'}
-                  data-testid="button-toggle-password"
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </button>
+                <span>Is your WhatsApp number and mobile number the same?<br /><small>क्या आपका व्हाट्सऐप नंबर और मोबाइल नंबर एक ही है?</small></span>
               </label>
             </div>
 
-            <div className="forgot-row">
-              <button
-                type="button"
-                className="forgot-button"
-                onClick={handleForgotPassword}
-                data-testid="button-forgot-password"
-              >
-                पासवर्ड भूल गए?
-              </button>
+            <div className="form-grid">
+              <Field
+                label="WhatsApp Number"
+                value={registration.whatsapp}
+                onChange={(value) => updateRegistration('whatsapp', value)}
+                placeholder="व्हाट्सऐप नंबर लिखें"
+                testId="input-whatsapp"
+                type="tel"
+                required
+                invalid={!!registrationError && !registration.whatsapp}
+              />
+              <div aria-hidden="true" />
+              <Field
+                label="Village"
+                hindiLabel="ग्राम"
+                value={registration.village}
+                onChange={(value) => updateRegistration('village', value)}
+                placeholder="ग्राम का नाम लिखें"
+                testId="input-village"
+                required
+                invalid={!!registrationError && !registration.village}
+              />
+              <Field
+                label="Block"
+                hindiLabel="ब्लॉक"
+                value={registration.block}
+                onChange={(value) => updateRegistration('block', value)}
+                placeholder="ब्लॉक का नाम लिखें"
+                testId="input-block"
+                required
+                invalid={!!registrationError && !registration.block}
+              />
+              <Field
+                label="District"
+                hindiLabel="जिला"
+                value={registration.district}
+                onChange={(value) => updateRegistration('district', value)}
+                placeholder="जिले का नाम लिखें"
+                testId="input-district"
+                required
+                invalid={!!registrationError && !registration.district}
+              />
+              <Field
+                label="Any Disease / Allergy"
+                hindiLabel="यदि कोई बीमारी / एलर्जी हो तो लिखें"
+                value={registration.allergy}
+                onChange={(value) => updateRegistration('allergy', value)}
+                placeholder="यदि नहीं है तो N/A लिखें"
+                testId="input-allergy"
+              />
             </div>
 
-            <button
-              type="submit"
-              className={`submit-button${signedIn ? ' success' : ''}`}
-              data-testid="button-login"
-            >
-              {signedIn ? 'लॉगिन सफल' : 'लॉगिन करें'}
-              <span className="arrow" aria-hidden="true">
-                {signedIn ? <Check /> : <ArrowRight />}
-              </span>
+            <section className="companion-panel" aria-labelledby="companion-heading">
+              <div className="companions-header">
+                <div>
+                  <div className="companions-title" id="companion-heading"><UsersRound size={20} /> Are there any other companions coming with you?</div>
+                  <p className="companions-subtitle">क्या आपके साथ और भी कोई साथी आ रहे हैं?</p>
+                </div>
+                <label className="companions-check">
+                  <input
+                    type="checkbox"
+                    checked={hasCompanions}
+                    onChange={(event) => setHasCompanions(event.target.checked)}
+                    data-testid="checkbox-has-companions"
+                  />
+                  <span>Yes<br /><small>हाँ, साथी मेरे साथ आ रहे हैं</small></span>
+                </label>
+              </div>
+
+              {hasCompanions && (
+                <>
+                  <div className="companion-list">
+                    {companions.map((companion, index) => (
+                      <div className="companion-row" key={`companion-${index}`}>
+                        <Field
+                          label="Name (नाम)"
+                          value={companion.name}
+                          onChange={(value) => updateCompanion(index, 'name', value)}
+                          placeholder="नाम"
+                          testId={`input-companion-name-${index}`}
+                        />
+                        <Field
+                          label="Age (आयु)"
+                          value={companion.age}
+                          onChange={(value) => updateCompanion(index, 'age', value)}
+                          placeholder="आयु"
+                          testId={`input-companion-age-${index}`}
+                          type="number"
+                        />
+                        <label className="field">
+                          <span>Gender (लिंग)</span>
+                          <select
+                            className="field-input"
+                            value={companion.gender}
+                            onChange={(event) => updateCompanion(index, 'gender', event.target.value)}
+                            aria-label={`Companion ${index + 1} gender`}
+                            data-testid={`select-companion-gender-${index}`}
+                          >
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                          </select>
+                        </label>
+                        <Field
+                          label="Relation (संबंध)"
+                          value={companion.relation}
+                          onChange={(value) => updateCompanion(index, 'relation', value)}
+                          placeholder="जैसे - मित्र, परिवार"
+                          testId={`input-companion-relation-${index}`}
+                        />
+                        <button
+                          className="remove-companion"
+                          type="button"
+                          onClick={() => setCompanions((current) => current.filter((_, companionIndex) => companionIndex !== index))}
+                          disabled={companions.length === 1}
+                          aria-label={`Remove companion ${index + 1}`}
+                          data-testid={`button-remove-companion-${index}`}
+                        >
+                          <Trash2 />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="add-companion"
+                    onClick={() => setCompanions((current) => [...current, { ...initialCompanion }])}
+                    data-testid="button-add-companion"
+                  >
+                    <Plus /> Add Another Companion
+                  </button>
+                </>
+              )}
+            </section>
+
+            {registrationError && <p className="form-error" role="alert" data-testid="error-registration">{registrationError}</p>}
+            {registrationComplete && (
+              <div className="registration-success" role="status" data-testid="status-registration-success">
+                <Check size={20} />
+                <div><strong>पंजीयन सफल रहा।</strong><span>आपकी यात्रा पंजीयन जानकारी सुरक्षित रूप से दर्ज हो गई है।</span></div>
+              </div>
+            )}
+            <button className="submit-registration" type="submit" data-testid="button-submit-registration">
+              <Send /> Submit Registration
             </button>
-
-            <div className="divider" aria-hidden="true">या इसके द्वारा जारी रखें</div>
-
-            <div className="social-row" aria-label="सोशल साइन इन विकल्प">
-              <button
-                type="button"
-                className="social-button google"
-                onClick={() => handleSocial('Google')}
-                aria-label="Google से जारी रखें"
-                data-testid="button-social-google"
-              >
-                <Chrome />
-              </button>
-              <button
-                type="button"
-                className="social-button apple"
-                onClick={() => handleSocial('Apple')}
-                aria-label="Apple से जारी रखें"
-                data-testid="button-social-apple"
-              >
-                <Apple />
-              </button>
-              <button
-                type="button"
-                className="social-button facebook"
-                onClick={() => handleSocial('Facebook')}
-                aria-label="Facebook से जारी रखें"
-                data-testid="button-social-facebook"
-              >
-                <Facebook />
-              </button>
-            </div>
-
-            <p className="signup-copy">
-              क्या आपके पास खाता नहीं है?
-              <button type="button" className="signup-link" onClick={handleSignup} data-testid="button-signup">
-                साइन अप करें
-              </button>
-            </p>
           </form>
         </section>
 
+        <div className="devotional-footer">माँ नर्मदा का आशीर्वाद, सदैव आपके साथ</div>
+      </div>
+
+      <section className="admin-shell" aria-labelledby="admin-heading">
         <button
+          className="admin-toggle"
           type="button"
-          className="blessing-hotspot"
-          onClick={() => setStatus('“माँ नर्मदा का आशीर्वाद हमारे हर सेवा कार्य की शक्ति है।”')}
-          aria-label="माँ नर्मदा का आशीर्वाद"
-          data-testid="button-blessing"
-        />
-        <span className="sr-only">माँ नर्मदा का आशीर्वाद हमारे हर सेवा कार्य की शक्ति है।</span>
+          aria-expanded={adminOpen}
+          onClick={() => setAdminOpen((open) => !open)}
+          data-testid="button-toggle-admin"
+        >
+          <span className="admin-toggle-label"><ShieldCheck /> <span>Admin Panel Login <small>प्रशासक प्रवेश</small></span></span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+
+        {adminOpen && (
+          <div className="admin-panel">
+            {!adminSignedIn ? (
+              <>
+                <h2 id="admin-heading">एडमिन पैनल लॉगिन</h2>
+                <p>यात्रा पंजीयन की देखरेख के लिए अधिकृत प्रवेश</p>
+                <form className="admin-form" onSubmit={submitAdmin} noValidate>
+                  <label className="field">
+                    <span>Email Address <b className="required">*</b></span>
+                    <span className="sr-only">ईमेल पता</span>
+                    <input
+                      className="field-input"
+                      type="email"
+                      value={adminEmail}
+                      onChange={(event) => { setAdminEmail(event.target.value); setAdminError(''); }}
+                      placeholder="ईमेल पता दर्ज करें"
+                      autoComplete="username"
+                      required
+                      aria-label="ईमेल पता"
+                      data-testid="input-admin-email"
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Password <b className="required">*</b></span>
+                    <span className="sr-only">पासवर्ड</span>
+                    <input
+                      className="field-input"
+                      type="password"
+                      value={adminPassword}
+                      onChange={(event) => { setAdminPassword(event.target.value); setAdminError(''); }}
+                      placeholder="पासवर्ड दर्ज करें"
+                      autoComplete="current-password"
+                      required
+                      aria-label="पासवर्ड"
+                      data-testid="input-admin-password"
+                    />
+                  </label>
+                  {adminError && <p className="admin-error" role="alert" data-testid="error-admin-login">{adminError}</p>}
+                  <button className="admin-submit" type="submit" data-testid="button-admin-login">लॉगिन करें</button>
+                </form>
+              </>
+            ) : (
+              <div className="admin-success" role="status" data-testid="status-admin-success">
+                <Check size={21} />
+                <span><strong>एडमिन लॉगिन सफल रहा।</strong><br />आप पंजीयन प्रबंधन के लिए अधिकृत हैं।</span>
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </main>
   );
@@ -183,7 +517,7 @@ function Router() {
   return (
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={RegistrationPage} />
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
