@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: registrations
+    description: Yatra registration management
 paths:
   /healthz:
     get:
@@ -24,6 +26,104 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /registrations:
+    get:
+      operationId: listRegistrations
+      tags: [registrations]
+      summary: List registrations
+      responses:
+        "200":
+          description: Registration list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Registration"
+    post:
+      operationId: createRegistration
+      tags: [registrations]
+      summary: Create a registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+      responses:
+        "201":
+          description: Created registration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "400":
+          description: Invalid registration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /registrations/{id}:
+    patch:
+      operationId: updateRegistration
+      tags: [registrations]
+      summary: Update a registration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationInput"
+      responses:
+        "200":
+          description: Updated registration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "400":
+          description: Invalid registration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Registration not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteRegistration
+      tags: [registrations]
+      summary: Delete a registration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Registration deleted
+        "400":
+          description: Invalid registration id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Registration not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +133,90 @@ components:
           type: string
       required:
         - status
+    Companion:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: string
+        gender:
+          type: string
+          enum: [Male, Female, Other, ""]
+        relation:
+          type: string
+      required: [name, age, gender, relation]
+    RegistrationInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        fatherName:
+          type: string
+          minLength: 1
+        motherName:
+          type: string
+          minLength: 1
+        age:
+          type: string
+          minLength: 1
+        gender:
+          type: string
+          enum: [Male, Female]
+        mobile:
+          type: string
+          minLength: 1
+        whatsapp:
+          type: string
+          minLength: 1
+        village:
+          type: string
+          minLength: 1
+        block:
+          type: string
+          minLength: 1
+        district:
+          type: string
+          minLength: 1
+        allergy:
+          type: string
+        companions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/Companion"
+      required:
+        - name
+        - fatherName
+        - motherName
+        - age
+        - gender
+        - mobile
+        - whatsapp
+        - village
+        - block
+        - district
+        - allergy
+        - companions
+    Registration:
+      allOf:
+        - $ref: "#/components/schemas/RegistrationInput"
+        - type: object
+          properties:
+            id:
+              type: integer
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+          required: [id, createdAt, updatedAt]
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 

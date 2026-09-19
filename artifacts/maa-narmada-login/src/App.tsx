@@ -1,5 +1,14 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import {
+  getListRegistrationsQueryKey,
+  useCreateRegistration,
+  useDeleteRegistration,
+  useListRegistrations,
+  useUpdateRegistration,
+  type Registration,
+  type RegistrationInput,
+} from '@workspace/api-client-react';
 import {
   Check,
   ChevronDown,
