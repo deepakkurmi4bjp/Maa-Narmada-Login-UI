@@ -507,6 +507,7 @@ select.field-input { appearance: auto; }
 }
 .manager-heading h3 { margin: 0; color: #fff2c5; font-size: 17px; }
 .manager-heading p { margin: 4px 0 0; color: rgba(232, 238, 220, .66); font-size: 11px; }
+.manager-heading-actions { display: flex; align-items: center; gap: 7px; }
 .manager-add, .manager-add-small, .manager-edit, .manager-delete, .manager-cancel {
   display: inline-flex;
   align-items: center;
@@ -523,6 +524,16 @@ select.field-input { appearance: auto; }
   border: 1px solid #f7d677;
   background: linear-gradient(180deg, #f9d875, #c88e27);
   font-size: 12px;
+}
+.manager-logout {
+  padding: 8px 10px;
+  color: #ffd8d4;
+  border: 1px solid rgba(255, 125, 122, .45);
+  border-radius: 7px;
+  background: rgba(177, 46, 56, .45);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
 }
 .manager-editor {
   display: grid;
@@ -617,7 +628,15 @@ select.field-input { appearance: auto; }
 .registration-table td strong, .registration-table td small { display: block; }
 .registration-table td small { margin-top: 2px; color: rgba(229, 241, 224, .55); font-size: 10px; }
 .manager-actions { white-space: nowrap; }
-.manager-edit, .manager-delete { padding: 5px 7px; font-size: 10px; }
+.manager-view, .manager-edit, .manager-delete { padding: 5px 7px; font-size: 10px; }
+.manager-view {
+  color: #e4f8ff;
+  border: 1px solid rgba(167, 225, 242, .45);
+  border-radius: 7px;
+  background: rgba(58, 126, 143, .45);
+  cursor: pointer;
+  font-weight: 700;
+}
 .manager-edit {
   color: #d9f3ff;
   border: 1px solid rgba(123, 211, 255, .5);
@@ -630,6 +649,51 @@ select.field-input { appearance: auto; }
   background: rgba(177, 46, 56, .55);
 }
 .manager-delete:disabled { cursor: wait; opacity: .45; }
+.registration-detail {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(238, 202, 111, .42);
+  border-radius: 9px;
+  background: rgba(63, 55, 26, .3);
+}
+.registration-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+.registration-detail-grid div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(4, 27, 22, .45);
+}
+.registration-detail-grid span, .registration-detail-companions > span {
+  display: block;
+  margin-bottom: 3px;
+  color: rgba(232, 238, 220, .6);
+  font-size: 10px;
+}
+.registration-detail-grid strong { display: block; color: #fff6d6; font-size: 12px; overflow-wrap: anywhere; }
+.registration-detail-companions {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid rgba(150, 209, 232, .2);
+  border-radius: 8px;
+  background: rgba(4, 28, 40, .25);
+}
+.registration-detail-companions > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(196, 219, 193, .12);
+  color: #e8f8ff;
+  font-size: 11px;
+}
+.registration-detail-companions > div:last-child { padding-bottom: 0; border-bottom: 0; }
+.registration-detail-companions > div span { color: rgba(229, 241, 224, .62); text-align: right; }
 
 .sr-only {
   position: absolute;
@@ -653,9 +717,14 @@ select.field-input { appearance: auto; }
   .companions-header { display: block; }
   .companions-check { margin-top: 9px; }
   .manager-heading { align-items: flex-start; flex-direction: column; }
-  .manager-add { width: 100%; }
+  .manager-heading-actions { width: 100%; }
+  .manager-add, .manager-logout { flex: 1; }
+  .registration-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .manager-companion-row { grid-template-columns: 1.2fr .6fr 1fr 1.2fr 30px; gap: 5px; }
   .manager-companion-row .field-input { padding: 0 5px; font-size: 10px; }
+}
+@media (max-width: 390px) {
+  .registration-detail-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 390px) {
   .public-shell, .admin-shell { padding-left: 9px; padding-right: 9px; }

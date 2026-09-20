@@ -103,7 +103,7 @@ function registrationToInput(registration: Registration): RegistrationInput {
   };
 }
 
-function AdminManager() {
+function AdminManager({ onSignOut }: { onSignOut: () => void }) {
   const queryClient = useQueryClient();
   const { data: registrations, isLoading, isError } = useListRegistrations();
   const updateMutation = useUpdateRegistration();
@@ -111,6 +111,7 @@ function AdminManager() {
   const createMutation = useCreateRegistration();
   const [draft, setDraft] = useState<RegistrationInput | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [viewingId, setViewingId] = useState<number | null>(null);
   const [managerError, setManagerError] = useState('');
   const [managerMessage, setManagerMessage] = useState('');
 
@@ -120,6 +121,7 @@ function AdminManager() {
 
   function startNew() {
     setEditingId(null);
+    setViewingId(null);
     setDraft({ ...emptyRegistrationInput });
     setManagerError('');
     setManagerMessage('');
@@ -127,6 +129,7 @@ function AdminManager() {
 
   function startEdit(registration: Registration) {
     setEditingId(registration.id);
+    setViewingId(null);
     setDraft(registrationToInput(registration));
     setManagerError('');
     setManagerMessage('');
@@ -198,9 +201,14 @@ function AdminManager() {
           <h3 id="registration-manager-heading">सभी यात्रा पंजीयन</h3>
           <p>Admin registration जोड़, edit और remove कर सकता है। अधिकतम 10 companions।</p>
         </div>
-        <button className="manager-add" type="button" onClick={startNew} data-testid="button-admin-add-registration">
-          <Plus size={16} /> Add Registration
-        </button>
+        <div className="manager-heading-actions">
+          <button className="manager-add" type="button" onClick={startNew} data-testid="button-admin-add-registration">
+            <Plus size={16} /> Add Registration
+          </button>
+          <button className="manager-logout" type="button" onClick={onSignOut} data-testid="button-admin-logout">
+            Logout
+          </button>
+        </div>
       </div>
 
       {managerError && <p className="admin-error" role="alert" data-testid="error-registration-manager">{managerError}</p>}
@@ -295,6 +303,7 @@ function AdminManager() {
                   <td>{registration.village}, {registration.district}</td>
                   <td>{registration.companions.length}/10</td>
                   <td className="manager-actions">
+                    <button type="button" className="manager-view" onClick={() => setViewingId(registration.id)} data-testid={`button-view-registration-${registration.id}`}>View</button>
                     <button type="button" className="manager-edit" onClick={() => startEdit(registration)} data-testid={`button-edit-registration-${registration.id}`}>Edit</button>
                     <button type="button" className="manager-delete" onClick={() => removeRegistration(registration.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-registration-${registration.id}`}>Remove</button>
                   </td>
@@ -304,6 +313,41 @@ function AdminManager() {
           </table>
         </div>
       )}
+      {viewingId !== null && registrations && (() => {
+        const registration = registrations.find((item) => item.id === viewingId);
+        if (!registration) return null;
+        return (
+          <section className="registration-detail" aria-labelledby="registration-detail-heading">
+            <div className="manager-editor-heading">
+              <strong id="registration-detail-heading">Registration Form Details</strong>
+              <button type="button" className="manager-cancel" onClick={() => setViewingId(null)}>Close</button>
+            </div>
+            <div className="registration-detail-grid">
+              <div><span>Name</span><strong>{registration.name}</strong></div>
+              <div><span>Father's Name</span><strong>{registration.fatherName}</strong></div>
+              <div><span>Mother's Name</span><strong>{registration.motherName}</strong></div>
+              <div><span>Age / Gender</span><strong>{registration.age} / {registration.gender}</strong></div>
+              <div><span>Mobile</span><strong>{registration.mobile}</strong></div>
+              <div><span>WhatsApp</span><strong>{registration.whatsapp}</strong></div>
+              <div><span>Village / Block</span><strong>{registration.village} / {registration.block}</strong></div>
+              <div><span>District</span><strong>{registration.district}</strong></div>
+              <div><span>Disease / Allergy</span><strong>{registration.allergy || 'N/A'}</strong></div>
+            </div>
+            <div className="registration-detail-companions">
+              <span>Companions ({registration.companions.length}/10)</span>
+              {registration.companions.length === 0
+                ? <strong>No companions</strong>
+                : registration.companions.map((companion, index) => (
+                  <div key={`detail-companion-${registration.id}-${index}`}>
+                    <strong>{index + 1}. {companion.name || 'Unnamed'}</strong>
+                    <span>{companion.age || '—'} years · {companion.gender || '—'} · {companion.relation || '—'}</span>
+                  </div>
+                ))}
+            </div>
+            <button type="button" className="admin-save" onClick={() => startEdit(registration)}>Edit This Registration</button>
+          </section>
+        );
+      })()}
     </section>
   );
 }
@@ -777,7 +821,7 @@ function RegistrationPage() {
                     <Check size={21} />
                     <span><strong>एडमिन लॉगिन सफल रहा।</strong><br />आप पंजीयन प्रबंधन के लिए अधिकृत हैं।</span>
                   </div>
-                  <AdminManager />
+                  <AdminManager onSignOut={() => setAdminSignedIn(false)} />
                 </>
             )}
           </div>
