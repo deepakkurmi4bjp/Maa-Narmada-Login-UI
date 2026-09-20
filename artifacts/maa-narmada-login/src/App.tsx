@@ -46,7 +46,7 @@ type RegistrationForm = {
 type Companion = {
   name: string;
   age: string;
-  gender: string;
+  gender: 'Male' | 'Female' | 'Other' | '';
   relation: string;
 };
 
@@ -70,6 +70,243 @@ const initialCompanion: Companion = {
   gender: '',
   relation: '',
 };
+
+const emptyRegistrationInput: RegistrationInput = {
+  name: '',
+  fatherName: '',
+  motherName: '',
+  age: '',
+  gender: 'Male',
+  mobile: '',
+  whatsapp: '',
+  village: '',
+  block: '',
+  district: '',
+  allergy: '',
+  companions: [],
+};
+
+function registrationToInput(registration: Registration): RegistrationInput {
+  return {
+    name: registration.name,
+    fatherName: registration.fatherName,
+    motherName: registration.motherName,
+    age: registration.age,
+    gender: registration.gender,
+    mobile: registration.mobile,
+    whatsapp: registration.whatsapp,
+    village: registration.village,
+    block: registration.block,
+    district: registration.district,
+    allergy: registration.allergy,
+    companions: registration.companions.slice(0, 10),
+  };
+}
+
+function AdminManager() {
+  const queryClient = useQueryClient();
+  const { data: registrations, isLoading, isError } = useListRegistrations();
+  const updateMutation = useUpdateRegistration();
+  const deleteMutation = useDeleteRegistration();
+  const createMutation = useCreateRegistration();
+  const [draft, setDraft] = useState<RegistrationInput | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [managerError, setManagerError] = useState('');
+  const [managerMessage, setManagerMessage] = useState('');
+
+  function invalidateRegistrations() {
+    void queryClient.invalidateQueries({ queryKey: getListRegistrationsQueryKey() });
+  }
+
+  function startNew() {
+    setEditingId(null);
+    setDraft({ ...emptyRegistrationInput });
+    setManagerError('');
+    setManagerMessage('');
+  }
+
+  function startEdit(registration: Registration) {
+    setEditingId(registration.id);
+    setDraft(registrationToInput(registration));
+    setManagerError('');
+    setManagerMessage('');
+  }
+
+  function updateDraft(key: keyof RegistrationInput, value: string) {
+    setDraft((current) => current ? { ...current, [key]: value } : current);
+  }
+
+  function updateDraftCompanion(index: number, key: keyof Companion, value: string) {
+    setDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        companions: current.companions.map((companion, companionIndex) =>
+          companionIndex === index ? { ...companion, [key]: value } : companion,
+        ),
+      };
+    });
+  }
+
+  function addDraftCompanion() {
+    setDraft((current) => current && current.companions.length < 10
+      ? { ...current, companions: [...current.companions, { ...initialCompanion }] }
+      : current);
+  }
+
+  function removeDraftCompanion(index: number) {
+    setDraft((current) => current
+      ? { ...current, companions: current.companions.filter((_, companionIndex) => companionIndex !== index) }
+      : current);
+  }
+
+  function saveDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft) return;
+    setManagerError('');
+    setManagerMessage('');
+    const onSuccess = () => {
+      invalidateRegistrations();
+      setDraft(null);
+      setEditingId(null);
+      setManagerMessage(editingId ? 'Registration updated successfully.' : 'Registration added successfully.');
+    };
+    const onError = () => setManagerError('Registration save नहीं हो सका। कृपया विवरण जाँचें और फिर प्रयास करें।');
+    if (editingId === null) {
+      createMutation.mutate({ data: draft }, { onSuccess, onError });
+    } else {
+      updateMutation.mutate({ id: editingId, data: draft }, { onSuccess, onError });
+    }
+  }
+
+  function removeRegistration(id: number) {
+    if (!window.confirm('क्या आप यह registration हटाना चाहते हैं?')) return;
+    setManagerError('');
+    deleteMutation.mutate({ id }, {
+      onSuccess: () => {
+        invalidateRegistrations();
+        setManagerMessage('Registration removed successfully.');
+      },
+      onError: () => setManagerError('Registration हटाया नहीं जा सका।'),
+    });
+  }
+
+  return (
+    <section className="registration-manager" aria-labelledby="registration-manager-heading">
+      <div className="manager-heading">
+        <div>
+          <h3 id="registration-manager-heading">सभी यात्रा पंजीयन</h3>
+          <p>Admin registration जोड़, edit और remove कर सकता है। अधिकतम 10 companions।</p>
+        </div>
+        <button className="manager-add" type="button" onClick={startNew} data-testid="button-admin-add-registration">
+          <Plus size={16} /> Add Registration
+        </button>
+      </div>
+
+      {managerError && <p className="admin-error" role="alert" data-testid="error-registration-manager">{managerError}</p>}
+      {managerMessage && <p className="manager-message" role="status">{managerMessage}</p>}
+
+      {draft && (
+        <form className="manager-editor" onSubmit={saveDraft}>
+          <div className="manager-editor-heading">
+            <strong>{editingId === null ? 'नया registration' : 'Registration edit करें'}</strong>
+            <button type="button" className="manager-cancel" onClick={() => setDraft(null)}>Cancel</button>
+          </div>
+          <div className="form-grid">
+            {([
+              ['name', 'Name'],
+              ['fatherName', "Father's Name"],
+              ['motherName', "Mother's Name"],
+              ['age', 'Age'],
+              ['mobile', 'Mobile Number'],
+              ['whatsapp', 'WhatsApp Number'],
+              ['village', 'Village'],
+              ['block', 'Block'],
+              ['district', 'District'],
+              ['allergy', 'Disease / Allergy'],
+            ] as const).map(([key, label]) => (
+              <Field
+                key={key}
+                label={label}
+                value={draft[key]}
+                onChange={(value) => updateDraft(key, value)}
+                placeholder={label}
+                testId={`input-admin-${key}`}
+                required={key !== 'allergy'}
+              />
+            ))}
+            <label className="field">
+              <span>Gender</span>
+              <select
+                className="field-input"
+                value={draft.gender}
+                onChange={(event) => updateDraft('gender', event.target.value)}
+                data-testid="select-admin-gender"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </label>
+          </div>
+          <div className="manager-companions">
+            <div className="manager-subheading">
+              <strong>Companions ({draft.companions.length}/10)</strong>
+              <button type="button" className="manager-add-small" onClick={addDraftCompanion} disabled={draft.companions.length >= 10}>
+                <Plus size={14} /> Add companion
+              </button>
+            </div>
+            {draft.companions.map((companion, index) => (
+              <div className="manager-companion-row" key={`admin-companion-${index}`}>
+                <input className="field-input" value={companion.name} onChange={(event) => updateDraftCompanion(index, 'name', event.target.value)} placeholder="Name" aria-label={`Admin companion ${index + 1} name`} />
+                <input className="field-input" value={companion.age} onChange={(event) => updateDraftCompanion(index, 'age', event.target.value)} placeholder="Age" aria-label={`Admin companion ${index + 1} age`} />
+                <select className="field-input" value={companion.gender} onChange={(event) => updateDraftCompanion(index, 'gender', event.target.value)} aria-label={`Admin companion ${index + 1} gender`}>
+                  <option value="">Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <input className="field-input" value={companion.relation} onChange={(event) => updateDraftCompanion(index, 'relation', event.target.value)} placeholder="Relation" aria-label={`Admin companion ${index + 1} relation`} />
+                <button type="button" className="remove-companion" onClick={() => removeDraftCompanion(index)} aria-label={`Remove admin companion ${index + 1}`}>
+                  <Trash2 />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button className="admin-save" type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+            {createMutation.isPending || updateMutation.isPending ? 'Saving…' : 'Save Registration'}
+          </button>
+        </form>
+      )}
+
+      {isLoading && <p className="manager-empty">Registrations load हो रहे हैं…</p>}
+      {isError && <p className="admin-error" role="alert">Registrations load नहीं हो सके।</p>}
+      {!isLoading && !isError && !registrations?.length && <p className="manager-empty">अभी कोई registration उपलब्ध नहीं है।</p>}
+      {!!registrations?.length && (
+        <div className="registration-table-wrap">
+          <table className="registration-table">
+            <thead>
+              <tr><th>Name</th><th>Mobile</th><th>Location</th><th>Companions</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {registrations.map((registration) => (
+                <tr key={registration.id}>
+                  <td><strong>{registration.name}</strong><small>{registration.fatherName}</small></td>
+                  <td>{registration.mobile}</td>
+                  <td>{registration.village}, {registration.district}</td>
+                  <td>{registration.companions.length}/10</td>
+                  <td className="manager-actions">
+                    <button type="button" className="manager-edit" onClick={() => startEdit(registration)} data-testid={`button-edit-registration-${registration.id}`}>Edit</button>
+                    <button type="button" className="manager-delete" onClick={() => removeRegistration(registration.id)} disabled={deleteMutation.isPending} data-testid={`button-delete-registration-${registration.id}`}>Remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function Field({
   label,
@@ -112,6 +349,8 @@ function Field({
 }
 
 function RegistrationPage() {
+  const queryClient = useQueryClient();
+  const createRegistrationMutation = useCreateRegistration();
   const [registration, setRegistration] = useState<RegistrationForm>(initialRegistration);
   const [sameWhatsApp, setSameWhatsApp] = useState(false);
   const [hasCompanions, setHasCompanions] = useState(true);
@@ -175,7 +414,29 @@ function RegistrationPage() {
       return;
     }
     setRegistrationError('');
-    setRegistrationComplete(true);
+    const payload: RegistrationInput = {
+      ...registration,
+      gender: registration.gender as RegistrationInput['gender'],
+      companions: hasCompanions
+        ? companions.slice(0, 10).map((companion) => ({
+          ...companion,
+          gender: companion.gender as 'Male' | 'Female' | 'Other' | '',
+        }))
+        : [],
+    };
+    createRegistrationMutation.mutate(
+      { data: payload },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: getListRegistrationsQueryKey() });
+          setRegistrationComplete(true);
+        },
+        onError: () => {
+          setRegistrationComplete(false);
+          setRegistrationError('पंजीयन सुरक्षित नहीं हो सका। कृपया कुछ देर बाद फिर प्रयास करें।');
+        },
+      },
+    );
   }
 
   function submitAdmin(event: FormEvent<HTMLFormElement>) {
@@ -428,13 +689,14 @@ function RegistrationPage() {
                       </div>
                     ))}
                   </div>
-                  <button
+                   <button
                     type="button"
                     className="add-companion"
                     onClick={() => setCompanions((current) => [...current, { ...initialCompanion }])}
+                     disabled={companions.length >= 10}
                     data-testid="button-add-companion"
                   >
-                    <Plus /> Add Another Companion
+                     <Plus /> {companions.length >= 10 ? 'Maximum 10 Companions' : 'Add Another Companion'}
                   </button>
                 </>
               )}
@@ -447,8 +709,8 @@ function RegistrationPage() {
                 <div><strong>पंजीयन सफल रहा।</strong><span>आपकी यात्रा पंजीयन जानकारी सुरक्षित रूप से दर्ज हो गई है।</span></div>
               </div>
             )}
-            <button className="submit-registration" type="submit" data-testid="button-submit-registration">
-              <Send /> Submit Registration
+            <button className="submit-registration" type="submit" disabled={createRegistrationMutation.isPending} data-testid="button-submit-registration">
+              <Send /> {createRegistrationMutation.isPending ? 'Saving Registration…' : 'Submit Registration'}
             </button>
           </form>
         </section>
@@ -510,10 +772,13 @@ function RegistrationPage() {
                 </form>
               </>
             ) : (
-              <div className="admin-success" role="status" data-testid="status-admin-success">
-                <Check size={21} />
-                <span><strong>एडमिन लॉगिन सफल रहा।</strong><br />आप पंजीयन प्रबंधन के लिए अधिकृत हैं।</span>
-              </div>
+                <>
+                  <div className="admin-success" role="status" data-testid="status-admin-success">
+                    <Check size={21} />
+                    <span><strong>एडमिन लॉगिन सफल रहा।</strong><br />आप पंजीयन प्रबंधन के लिए अधिकृत हैं।</span>
+                  </div>
+                  <AdminManager />
+                </>
             )}
           </div>
         )}

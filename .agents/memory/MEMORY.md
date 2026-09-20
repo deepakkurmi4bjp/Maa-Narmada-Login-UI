@@ -1,0 +1,1 @@
+- [Generated API client typing](generated-client-tsconfig.md) — Generated fetch code relies on iterable DOM typings; keep client TypeScript libs aligned.
